@@ -347,3 +347,84 @@ PING lab.example.com (172.25.0.254) 56(84) bytes of data.
 64 bytes from lab.example.com (172.25.0.254): icmp_seq=1 ttl=64 time=0.340 ms
 ...
 ```
+## 8. Configure YUM package repositories
+
+Base on information security reason, some organization may have internal YUM package repositories. Please configure one.
+
+- Download lastest [CentOS DVD ISO](https://www.centos.org/download/).
+- Attach the ISO to **lab.example.com**, make sure it persistent mount on **/var/www/html/pub/dvd/**.
+- Remove all present YUM package repositories both on **server.example.com** and **desktop.example.com**.
+- Add a new repository with from http://lab.example.com/pub/dvd/ both on **server.example.com** and **desktop.example.com**.
+
+```bash
+#Download and attach the ISO, it should available as /dev/sr0
+[root@lab ~]# mkdir /var/www/html/pub/dvd
+[root@lab ~]# echo "/dev/sr0        /var/www/html/pub/dvd   iso9660 loop    0 0" >> /etc/fstab
+[root@lab ~]# mount -a
+[root@lab ~]# df -h
+Filesystem                       Size  Used Avail Use% Mounted on
+/dev/mapper/VolGroup00-LogVol00   38G  1.1G   37G   3% /
+devtmpfs                         236M     0  236M   0% /dev
+tmpfs                            245M     0  245M   0% /dev/shm
+tmpfs                            245M  4.4M  240M   2% /run
+tmpfs                            245M     0  245M   0% /sys/fs/cgroup
+/dev/vda2                       1014M   66M  949M   7% /boot
+tmpfs                             49M     0   49M   0% /run/user/0
+/dev/loop0                       4.3G  4.3G     0 100% /var/www/html/pub/dvd
+
+[root@desktop ~]# mkdir /etc/yum.repos.d/backup
+[root@desktop ~]# mv /etc/yum.repos.d/* /etc/yum.repos.d/backup/
+mv: cannot move ‘/etc/yum.repos.d/backup’ to a subdirectory of itself, ‘/etc/yum.repos.d/backup/backup’
+[root@desktop ~]# ls /etc/yum.repos.d/
+backup
+[root@desktop ~]# yum-config-manager --add-repo=http://lab.example.com/pub/dvd
+Loaded plugins: fastestmirror
+adding repo from: http://lab.example.com/pub/dvd
+
+[lab.example.com_pub_dvd]
+name=added from: http://lab.example.com/pub/dvd
+baseurl=http://lab.example.com/pub/dvd
+enabled=1
+
+
+[root@desktop ~]# sed -i "/enabled=1/a\gpgcheck=0" /etc/yum.repos.d/lab.example.com_pub_dvd.repo
+[root@desktop ~]# cat /etc/yum.repos.d/lab.example.com_pub_dvd.repo
+
+[lab.example.com_pub_dvd]
+name=added from: http://lab.example.com/pub/dvd
+baseurl=http://lab.example.com/pub/dvd
+enabled=1
+gpgcheck=0
+[root@desktop ~]# yum clean all
+[root@desktop ~]# yum install tree -y &> /dev/null && echo ok
+ok
+
+[root@server ~]# mkdir /etc/yum.repos.d/backup
+[root@server ~]# mv /etc/yum.repos.d/* /etc/yum.repos.d/backup/
+mv: cannot move ‘/etc/yum.repos.d/backup’ to a subdirectory of itself, ‘/etc/yum.repos.d/backup/backup’
+[root@server ~]# ls /etc/yum.repos.d/
+backup
+[root@server ~]# yum-config-manager --add-repo=http://lab.example.com/pub/dvd
+Loaded plugins: fastestmirror
+adding repo from: http://lab.example.com/pub/dvd
+
+[lab.example.com_pub_dvd]
+name=added from: http://lab.example.com/pub/dvd
+baseurl=http://lab.example.com/pub/dvd
+enabled=1
+
+
+[root@server ~]# sed -i "/enabled=1/a\gpgcheck=0" /etc/yum.repos.d/lab.example.com_pub_dvd.repo
+[root@server ~]# cat /etc/yum.repos.d/lab.example.com_pub_dvd.repo
+
+[lab.example.com_pub_dvd]
+name=added from: http://lab.example.com/pub/dvd
+baseurl=http://lab.example.com/pub/dvd
+enabled=1
+gpgcheck=0
+
+[root@server ~]# yum clean all
+[root@server ~]# yum install tree -y &> /dev/null && echo ok
+ok
+```
+## 9.
