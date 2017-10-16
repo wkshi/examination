@@ -82,6 +82,7 @@ hancock
 
 People must work together in modern world. Please create shared directory for several users.
 
+- Create directories on **desktop.example.com**.
 - Create directories as listed tree-like format:
 
 ```
@@ -354,7 +355,7 @@ Base on information security reason, some organization may have internal YUM pac
 - Download lastest [CentOS DVD ISO](https://www.centos.org/download/).
 - Attach the ISO to **lab.example.com**, make sure it persistent mount on **/var/www/html/pub/dvd/**.
 - Remove all present YUM package repositories both on **server.example.com** and **desktop.example.com**.
-- Add a new repository with from http://lab.example.com/pub/dvd/ both on **server.example.com** and **desktop.example.com**.
+- Add a new repository from http://lab.example.com/pub/dvd/ both on **server.example.com** and **desktop.example.com**.
 
 ```bash
 #Download and attach the ISO, it should available as /dev/sr0
@@ -427,4 +428,34 @@ gpgcheck=0
 [root@server ~]# yum install tree -y &> /dev/null && echo ok
 ok
 ```
-## 9.
+## 9. Schedule recurring backup jobs
+
+Almost all sensitive job will schedule on non work time. Please schedule recurring backup jobs follow requiring.
+
+- Schedule jobs on **desktop.example.com**.
+- User **hancock** is not allow to use cron.
+- Make sure listed backup plan works.
+
+|Remote Host|Remote Directory|Local Synchronize Directory|User|Schedule|
+|-|-|-|-|-|
+|server.example.com|/var/log/|/var/remote-log|System cron jobs|22:40, every day|
+
+```bash
+[root@desktop ~]# echo hancock >> /etc/cron.deny
+[root@desktop ~]# cat /etc/cron.deny
+hancock
+[root@desktop ~]# su - hancock
+[hancock@desktop ~]$ crontab -e
+You (hancock) are not allowed to use this program (crontab)
+See crontab(1) for more information
+
+[root@desktop ~]# cp /home/luffy/.ssh/id_rsa ~/.ssh/id_rsa
+[root@desktop ~]# mkdir /var/remote-log
+[root@desktop ~]# mkdir ~/bin
+[root@desktop ~]# vim ~/bin/backup-remote-log.sh
+[root@desktop ~]# cat ~/bin/backup-remote-log.sh
+#!/bin/bash
+/usr/bin/rsync -av root@server.example.com:/var/log/* /var/remote-log/
+[root@desktop ~]# chmod +x ~/bin/backup-remote-log.sh
+[root@desktop ~]# echo "40 22 * * * root /root/bin/backup-remote-log.sh" >> /etc/crontab
+```
