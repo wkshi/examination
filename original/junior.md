@@ -459,3 +459,76 @@ See crontab(1) for more information
 [root@desktop ~]# chmod +x ~/bin/backup-remote-log.sh
 [root@desktop ~]# echo "40 22 * * * root /root/bin/backup-remote-log.sh" >> /etc/crontab
 ```
+
+## 10. Attach system to centralized authentication services
+
+Keeping local user accounts from multi machines in sync is a daunting task. Please attach system to centralized LDAP and Kerberos servers.
+
+- Attach both **server.example.com** and **desktop.example.com** to centralized LDAP and Kerberos servers.
+- Follow listed setting to finish task.
+
+|Server|Base DN|TLS Cert|Realm|kdc|Admin Server|
+|-|-|-|-|-|-|
+|lab.example.com|dc=example,dc=com|http://lab.example.com/pub/EXAMPLE-CA-CRT|EXAMPLE.COM|lab.example.com|lab.example.com|
+
+- Make sure listed user could login successfully, with remote home directory mounted. Their home directory export by NFS on **lab.example.com:/home/guests**.
+
+|Username|Password|Home Directory|
+|-|-|-|
+|bruce|kerberos|/home/guests/bruce/|
+|charles|kerberos|/home/guests/charles/|
+|loki|kerberos|/home/guests/loki/|
+|peter|kerberos|/home/guests/peter/|
+|steve|kerberos|/home/guests/steve/|
+
+```bash
+[root@desktop ~]# yum install sssd krb5-workstation setuptool autofs wget -y
+[root@desktop ~]# setup
+[*] Use LDAP
+[*] Use Kerberos
+[*] Use TLS
+Server: lab.example.com
+Base DN: dc=example,dc=com
+Realm: EXAMPLE.COM
+KDC: lab.example.com
+Admin Server: lab.example.com
+[root@desktop ~]# wget -O /etc/openldap/cacerts/EXAMPLE-CA-CRT http://lab.example.com/pub/EXAMPLE-CA-CRT
+Then press OK.
+[root@desktop ~]# systemctl status sssd
+
+[root@desktop ~]# vim /etc/auto.master.d/lab.autofs
+[root@desktop ~]# vim /etc/lab.master
+[root@desktop ~]# cat /etc/auto.master.d/lab.autofs
+/home/guests /etc/lab.master
+[root@desktop ~]# cat /etc/lab.master
+*	lab.example.com:/home/guests/&
+[root@desktop ~]# systemctl enable autofs
+[root@desktop ~]# systemctl start autofs
+[root@desktop ~]# ssh loki@desktop.example.com
+# succeed...
+
+[root@server ~]# yum install sssd krb5-workstation setuptool autofs wget -y
+[root@server ~]# setup
+[*] Use LDAP
+[*] Use Kerberos
+[*] Use TLS
+Server: lab.example.com
+Base DN: dc=example,dc=com
+Realm: EXAMPLE.COM
+KDC: lab.example.com
+Admin Server: lab.example.com
+[root@server ~]# wget -O /etc/openldap/cacerts/EXAMPLE-CA-CRT http://lab.example.com/pub/EXAMPLE-CA-CRT
+Then press OK.
+[root@server ~]# systemctl status sssd
+
+[root@server ~]# vim /etc/auto.master.d/lab.autofs
+[root@server ~]# vim /etc/lab.master
+[root@server ~]# cat /etc/auto.master.d/lab.autofs
+/home/guests /etc/lab.master
+[root@server ~]# cat /etc/lab.master
+*	lab.example.com:/home/guests/&
+[root@server ~]# systemctl enable autofs
+[root@server ~]# systemctl start autofs
+[root@server ~]# su - loki
+# succeed...
+```
