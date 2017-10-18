@@ -532,3 +532,239 @@ Then press OK.
 [root@server ~]# su - loki
 # succeed...
 ```
+
+## 11. Add disk and partitions
+
+There usually more than one disk on a server. Please add disk and partitions.
+
+- Attach a 10G disk to **desktop.example.com**.
+- Add listed partitions.
+
+|Device|Size|Mount Point|File System|
+|-|-|-|-|
+|/dev/vdb1|1G|/mnt/disk1/|ext4|
+|/dev/vdb2|2G|/mnt/disk2/|xfs|
+|/dev/vdb3|3G|/mnt/disk3/|xfs|
+
+```bash
+# Attach disk by provider
+[root@desktop ~]# fdisk -l /dev/vdb
+
+Disk /dev/vdb: 10.7 GB, 10737418240 bytes, 20971520 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+[root@desktop ~]# fdisk /dev/vdb
+Welcome to fdisk (util-linux 2.23.2).
+
+Changes will remain in memory only, until you decide to write them.
+Be careful before using the write command.
+
+Device does not contain a recognized partition table
+Building a new DOS disklabel with disk identifier 0x10196a06.
+
+Command (m for help): n
+Partition type:
+   p   primary (0 primary, 0 extended, 4 free)
+   e   extended
+Select (default p):
+Using default response p
+Partition number (1-4, default 1):
+First sector (2048-20971519, default 2048):
+Using default value 2048
+Last sector, +sectors or +size{K,M,G} (2048-20971519, default 20971519): +1G
+Partition 1 of type Linux and of size 1 GiB is set
+
+Command (m for help): n
+Partition type:
+   p   primary (1 primary, 0 extended, 3 free)
+   e   extended
+Select (default p):
+Using default response p
+Partition number (2-4, default 2):
+First sector (2099200-20971519, default 2099200):    
+Using default value 2099200
+Last sector, +sectors or +size{K,M,G} (2099200-20971519, default 20971519): +2G
+Partition 2 of type Linux and of size 2 GiB is set
+
+Command (m for help): n
+Partition type:
+   p   primary (2 primary, 0 extended, 2 free)
+   e   extended
+Select (default p):
+Using default response p
+Partition number (3,4, default 3):
+First sector (6293504-20971519, default 6293504):
+Using default value 6293504
+Last sector, +sectors or +size{K,M,G} (6293504-20971519, default 20971519): +3G
+Partition 3 of type Linux and of size 3 GiB is set
+
+Command (m for help): p
+
+Disk /dev/vdb: 10.7 GB, 10737418240 bytes, 20971520 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disk label type: dos
+Disk identifier: 0x10196a06
+
+   Device Boot      Start         End      Blocks   Id  System
+/dev/vdb1            2048     2099199     1048576   83  Linux
+/dev/vdb2         2099200     6293503     2097152   83  Linux
+/dev/vdb3         6293504    12584959     3145728   83  Linux
+
+Command (m for help): w
+The partition table has been altered!
+
+Calling ioctl() to re-read partition table.
+Syncing disks.
+[root@desktop ~]# mkfs.ext4 /dev/vdb1
+[root@desktop ~]# mkfs.xfs /dev/vdb2
+[root@desktop ~]# mkfs.xfs /dev/vdb3
+[root@desktop ~]# mkdir /mnt/disk{1..3}
+[root@desktop ~]# echo "/dev/vdb1 /mnt/disk1 ext4 defaults 0 0" >> /etc/fstab
+[root@desktop ~]# echo "/dev/vdb2 /mnt/disk2 xfs  defaults 0 0" >> /etc/fstab
+[root@desktop ~]# echo "/dev/vdb3 /mnt/disk3 xfs  defaults 0 0" >> /etc/fstab
+[root@desktop ~]# mount -a
+```
+
+## 12. Manage logical volume management (LVM)
+
+Logical volumes and logical volume management could make it easier to manage disk space. Please create LVM.
+
+- Create LVM on **desktop.example.com**.
+- Make sure listed requiring.
+
+|PV|PV Size|VG|PE Size|LV|LV Size|File System|Mount Point|
+|-|-|-|-|-|-|
+|/dev/vdb5|500M|data-pool|4M|data-storage|200 PEs|xfs|/mnt/data-storage/|
+|/dev/vdb6|500M|data-pool|4M|meta-data|100M|xfs|/mnt/meta-data/|
+|/dev/vdb7|2G|backup-pool|8M|backup-storage|1G|xfs|/mnt/backup-storage/|
+
+- Extend **backup-storage** to **1.2G**.
+
+```bash
+[root@desktop ~]# fdisk /dev/vdb
+Welcome to fdisk (util-linux 2.23.2).
+
+Changes will remain in memory only, until you decide to write them.
+Be careful before using the write command.
+
+Command (m for help): n
+Partition type:
+   p   primary (3 primary, 0 extended, 1 free)
+   e   extended
+Select (default e):
+Using default response e
+Selected partition 4
+First sector (12584960-20971519, default 12584960):
+Using default value 12584960
+Last sector, +sectors or +size{K,M,G} (12584960-20971519, default 20971519):
+Using default value 20971519
+Partition 4 of type Extended and of size 4 GiB is set
+
+Command (m for help): n
+All primary partitions are in use
+Adding logical partition 5
+First sector (12587008-20971519, default 12587008):
+Using default value 12587008
+Last sector, +sectors or +size{K,M,G} (12587008-20971519, default 20971519): +500M
+Partition 5 of type Linux and of size 500 MiB is set
+
+Command (m for help): t
+Partition number (1-5, default 5):
+Hex code (type L to list all codes): 8e
+Changed type of partition 'Linux' to 'Linux LVM'
+
+Command (m for help): n
+All primary partitions are in use
+Adding logical partition 6
+First sector (13613056-20971519, default 13613056):
+Using default value 13613056
+Last sector, +sectors or +size{K,M,G} (13613056-20971519, default 20971519): +500M
+Partition 6 of type Linux and of size 500 MiB is set
+
+Command (m for help): t
+Partition number (1-6, default 6):
+Hex code (type L to list all codes): 8e
+Changed type of partition 'Linux' to 'Linux LVM'
+
+Command (m for help): n
+All primary partitions are in use
+Adding logical partition 7
+First sector (14639104-20971519, default 14639104):
+Using default value 14639104
+Last sector, +sectors or +size{K,M,G} (14639104-20971519, default 20971519): +2G
+Partition 7 of type Linux and of size 2 GiB is set
+
+Command (m for help): t
+Partition number (1-7, default 7):
+Hex code (type L to list all codes): 8e
+Changed type of partition 'Linux' to 'Linux LVM'
+
+Command (m for help): p
+
+Disk /dev/vdb: 10.7 GB, 10737418240 bytes, 20971520 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disk label type: dos
+Disk identifier: 0x10196a06
+
+   Device Boot      Start         End      Blocks   Id  System
+/dev/vdb1            2048     2099199     1048576   83  Linux
+/dev/vdb2         2099200     6293503     2097152   83  Linux
+/dev/vdb3         6293504    12584959     3145728   83  Linux
+/dev/vdb4        12584960    20971519     4193280    5  Extended
+/dev/vdb5        12587008    13611007      512000   8e  Linux LVM
+/dev/vdb6        13613056    14637055      512000   8e  Linux LVM
+/dev/vdb7        14639104    18833407     2097152   8e  Linux LVM
+
+Command (m for help): w
+The partition table has been altered!
+
+Calling ioctl() to re-read partition table.
+
+WARNING: Re-reading the partition table failed with error 16: Device or resource busy.
+The kernel still uses the old table. The new table will be used at
+the next reboot or after you run partprobe(8) or kpartx(8)
+Syncing disks.
+[root@desktop ~]# partprobe
+
+[root@desktop ~]# pvcreate /dev/vdb{5,6,7}
+  Physical volume "/dev/vdb5" successfully created.
+  Physical volume "/dev/vdb6" successfully created.
+  Physical volume "/dev/vdb7" successfully created.
+[root@desktop ~]# vgcreate data-pool /dev/vdb{5,6}
+  Volume group "data-pool" successfully created
+[root@desktop ~]# vgcreate -s 8M backup-pool /dev/vdb7
+  Volume group "backup-pool" successfully created
+[root@desktop ~]# vgs
+  VG          #PV #LV #SN Attr   VSize   VFree  
+  VolGroup00    1   2   0 wz--n- <38.97g      0
+  backup-pool   1   0   0 wz--n-   1.99g   1.99g
+  data-pool     2   0   0 wz--n- 992.00m 992.00m
+[root@desktop ~]# lvcreate -l 200 -n data-storage data-pool
+  Logical volume "data-storage" created.
+[root@desktop ~]# lvcreate -L 100M -n meta-data data-pool
+  Logical volume "meta-data" created.
+[root@desktop ~]# lvcreate -L 1G -n backup-storage backup-pool
+  Logical volume "backup-storage" created.
+
+[root@desktop ~]# mkdir /mnt/{data-storage,meta-data,backup-storage}
+
+[root@desktop ~]# mkfs.xfs /dev/data-pool/data-storage
+[root@desktop ~]# mkfs.xfs /dev/data-pool/meta-data
+[root@desktop ~]# mkfs.xfs /dev/backup-pool/backup-storage
+
+[root@desktop ~]# echo "/dev/data-pool/data-storage /mnt/data-storage xfs defaults 0 0" >> /etc/fstab
+[root@desktop ~]# echo "/dev/data-pool/meta-data /mnt/meta-data xfs defaults 0 0" >> /etc/fstab
+[root@desktop ~]# echo "/dev/backup-pool/backup-storage /mnt/backup-storage xfs defaults 0 0" >> /etc/fstab
+[root@desktop ~]# mount -a
+
+[root@desktop ~]# lvextend -L 1.2G /dev/backup-pool/backup-storage
+  Rounding size to boundary between physical extents: 1.20 GiB.
+  Size of logical volume backup-pool/backup-storage changed from 1.00 GiB (128 extents) to 1.20 GiB (154 extents).
+  Logical volume backup-pool/backup-storage successfully resized.
+[root@desktop ~]# xfs_growfs /dev/backup-pool/backup-storage
+```
